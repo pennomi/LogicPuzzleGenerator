@@ -8,11 +8,11 @@ __all__ = [
 
 class Problem:
     def __init__(self):
-        self._solver = RecursiveBacktrackingSolver()
         self._constraints = []
         self._variables = {}
 
     def add_variable(self, variable, domain):
+        variable = str(variable)
         if variable in self._variables:
             msg = "Tried to insert duplicated variable %s" % repr(variable)
             raise ValueError(msg)
@@ -41,7 +41,7 @@ class Problem:
         domains, constraints = self._get_args()
         if not domains:
             return []
-        return self._solver.get_solutions(domains, constraints)
+        return _recursive_backtracking([], domains, constraints, {})
 
     def _get_args(self):
         domains = self._variables.copy()
@@ -64,48 +64,44 @@ class Problem:
         return domains, constraints
 
 
-class RecursiveBacktrackingSolver:
-    def recursive_backtracking(self, solutions, domains, constraints, assignments):
-        # Mix the Degree and Minimum Remaining Values (MRV) heuristics
-        lst = [(-len(constraints[variable]), len(domains[variable]), variable) for variable in domains]
-        lst.sort()
-        for item in lst:
-            if item[-1] not in assignments:
-                # Found an unassigned variable. Let's go.
-                break
-        else:
-            # No unassigned variables. We've got a solution.
-            print("Found a solution")
-            print(json.dumps(assignments))
-            solutions.append(assignments.copy())
-            return solutions
-
-        variable = item[-1]
-        assignments[variable] = None
-
-        # Do a forward check
-        push_domains = [domains[x] for x in domains if x not in assignments]
-
-        for value in domains[variable]:
-            assignments[variable] = value
-            if push_domains:
-                for domain in push_domains:
-                    domain.push_state()
-            for constraint, variables in constraints[variable]:
-                if not constraint(variables, domains, assignments):
-                    # Value is not good.
-                    break
-            else:
-                # Value is good. Recurse and get next variable.
-                self.recursive_backtracking(solutions, domains, constraints, assignments)
-            if push_domains:
-                for domain in push_domains:
-                    domain.pop_state()
-        del assignments[variable]
+def _recursive_backtracking(solutions, domains, constraints, assignments):
+    # Mix the Degree and Minimum Remaining Values (MRV) heuristics
+    lst = [(-len(constraints[variable]), len(domains[variable]), variable) for variable in domains]
+    lst.sort()
+    for item in lst:
+        if item[-1] not in assignments:
+            # Found an unassigned variable. Let's go.
+            break
+    else:
+        # No unassigned variables. We've got a solution.
+        print("Found a solution")
+        print(json.dumps(assignments))
+        solutions.append(assignments.copy())
         return solutions
 
-    def get_solutions(self, domains, constraints):
-        return self.recursive_backtracking([], domains, constraints, {})
+    variable = item[-1]
+    assignments[variable] = None
+
+    # Do a forward check
+    push_domains = [domains[x] for x in domains if x not in assignments]
+
+    for value in domains[variable]:
+        assignments[variable] = value
+        if push_domains:
+            for domain in push_domains:
+                domain.push_state()
+        for constraint, variables in constraints[variable]:
+            if not constraint(variables, domains, assignments):
+                # Value is not good.
+                break
+        else:
+            # Value is good. Recurse and get next variable.
+            _recursive_backtracking(solutions, domains, constraints, assignments)
+        if push_domains:
+            for domain in push_domains:
+                domain.pop_state()
+    del assignments[variable]
+    return solutions
 
 
 Unassigned = "Unassigned"
@@ -152,25 +148,6 @@ class Constraint:
         return self._func(*parameters)
 
     def preprocess(self, variables, domains, constraints):
-        """
-        Preprocess variable domains
-
-        This method is called before starting to look for solutions,
-        and is used to prune domains with specific constraint logic
-        when possible. For instance, any constraints with a single
-        variable may be applied on all possible values and removed,
-        since they may act on individual values even without further
-        knowledge about other assignments.
-
-        @param variables: Variables affected by that constraint, in the
-                          same order provided by the user
-        @type  variables: sequence
-        @param domains: Dictionary mapping variables to their domains
-        @type  domains: dict
-        @param constraints: Dictionary mapping variables to a list of
-                             constraints affecting the given variables.
-        @type  constraints: dict
-        """
         if len(variables) == 1:
             variable = variables[0]
             domain = domains[variable]
@@ -180,24 +157,6 @@ class Constraint:
             constraints[variable].remove((self, variables))
 
     def forward_check(self, variables, domains, assignments):
-        """
-        Helper method for generic forward checking
-
-        Currently, this method acts only when there's a single
-        unassigned variable.
-
-        @param variables: Variables affected by that constraint, in the
-                          same order provided by the user
-        @type  variables: sequence
-        @param domains: Dictionary mapping variables to their domains
-        @type  domains: dict
-        @param assignments: Dictionary mapping assigned variables to their
-                            current assumed value
-        @type  assignments: dict
-        @return: Boolean value stating if this constraint is currently
-                 broken or not
-        @rtype: bool
-        """
         unassigned_variable = Unassigned
         for variable in variables:
             if variable not in assignments:
@@ -207,8 +166,6 @@ class Constraint:
                     break
         else:
             if unassigned_variable is not Unassigned:
-                # Remove from the unassigned variable domain's all
-                # values which break our variable's constraints.
                 domain = domains[unassigned_variable]
                 if domain:
                     for value in domain[:]:

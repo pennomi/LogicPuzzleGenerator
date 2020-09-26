@@ -6,76 +6,74 @@ from solver import Problem
 
 
 DOMAINS = {
-    "Runner": ["Anthony", "Herman", "Isaac", "Jay", "Kelly", "Lynn", "Matthew"],
-    "Shirt": ["Black", "Gray", "Indigo", "Orange", "Red", "White", "Yellow"],
-    "Town": ["Bellflower", "Corinth", "Fullerton", "Janesville", "Norway", "Waldoboro", "Zamora"],
-    "Time": ["21", "22", "23", "24", "25", "26", "27"],
+    "Grandchild": ["Bryan", "Franklin", "Hilda", "Kerry", "Patti", "Sadie", "Vicki"],
+    "Age": ["5", "6", "8", "9", "12", "14", "18"],
+    "Town": ["Cornville", "El Monte", "Fillmore", "Goldfield", "Le Mars", "Quimby", "Urbana"],
+    "Birthday": [3, 7, 11, 15, 19, 23, 27],
 }
+PRIMARY_DOMAIN = "Birthday"  # Primary domain should be the mathy domain if one exists
 
 
 def main():
     problem = Problem()
 
-    criteria = []
-    for _ in DOMAINS.values():
-        criteria.extend(_)
+    for domain_name, value_list in DOMAINS.items():
+        # Add the variables
+        if domain_name == PRIMARY_DOMAIN:
+            for var in value_list:
+                # Ensure this is a numerical one?
+                problem.add_variable(var, [var])
+        else:
+            problem.add_variables(value_list, DOMAINS[PRIMARY_DOMAIN])
 
-    problem.add_variables(criteria, [21, 22, 23, 24, 25, 26, 27])
-
-    for _ in DOMAINS.values():
-        problem.add_constraint(clues.all_different(), _)
+        # Also add the constraints
+        problem.add_constraint(clues.all_different(), [str(v) for v in value_list])
 
     clue_list = [
-        # Bind the time variables
-        (lambda a: a == 21, ["21"]),
-        (lambda a: a == 22, ["22"]),
-        (lambda a: a == 23, ["23"]),
-        (lambda a: a == 24, ["24"]),
-        (lambda a: a == 25, ["25"]),
-        (lambda a: a == 26, ["26"]),
-        (lambda a: a == 27, ["27"]),
+        # 1. Of the child from Goldfield and the child with the April 23rd birthday, one is Franklin and the other is 8 years old.
+        (clues.connected_pairs(), ["Goldfield", "23", "Franklin", "8"]),
 
-        # 1. The runner from Waldoboro, the runner who finished in 26 minutes, Kelly, the competitor in the white shirt and the runner in the indigo shirt were all different runners.
-        (clues.all_different(), ["Waldoboro", "26", "Kelly", "White", "Indigo"]),
+        # 2. The 18-year-old has a birthday 4 days before Franklin.
+        (clues.add_n_equals(4), ["18", "Franklin"]),
 
-        # 2. Anthony finished 1 minute after the competitor from Norway.
-        (clues.add_n_equals(1), ["Norway", "Anthony"]),
+        # 3. The child from Cornville has a birthday 8 days before Sadie.
+        (clues.add_n_equals(8), ["Cornville", "Sadie"]),
 
-        # 3. The competitor from Zamora was either Herman or the competitor who finished in 25 minutes.
-        (clues.is_one_of(), ["Zamora", "Herman", "25"]),
+        # 4. The child from Le Mars has a birthday 20 days before the grandchild from Fillmore.
+        (clues.add_n_equals(20), ["Le Mars", "Fillmore"]),
 
-        # 4. Herman finished sometime before the contestant in the indigo shirt.
-        (clues.greater_than(), ["Indigo", "Herman"]),
+        # 5. The 5-year-old has a birthday 20 days after the child from Le Mars.
+        (clues.add_n_equals(-20), ["5", "Le Mars"]),
 
-        # 5. The competitor from Fullerton was either the contestant who finished in 23 minutes or the competitor who finished in 25 minutes.
-        (clues.is_one_of(), ["Fullerton", "23", "25"]),
+        # 6. The 12-year-old is either Sadie or the grandchild with the April 7th birthday.
+        (clues.is_one_of(), ["12", "Sadie", "7"]),
 
-        # 6. Of the runner who finished in 21 minutes and the runner from Fullerton, one was Isaac and the other wore the black shirt.
-        (clues.connected_pairs(), ["21", "Fullerton", "Isaac", "Black"]),
+        # 7. The 12-year-old has a birthday sometime after Kerry.
+        (clues.greater_than(), ["12", "Kerry"]),
 
-        # 7. Jay finished 5 minutes after the competitor from Corinth.
-        (clues.add_n_equals(5), ["Corinth", "Jay"]),
+        # 8. The one from Quimby isn't 14 years old.
+        (clues.all_different(), ["Quimby", "14"]),
 
-        # 8. Herman was either the runner from Waldoboro or the contestant from Norway.
-        (clues.is_one_of(), ["Herman", "Waldoboro", "Norway"]),
+        # 9. The child from Goldfield has a birthday 8 days before Hilda.
+        (clues.add_n_equals(8), ["Goldfield", "Hilda"]),
 
-        # 9. Neither the runner who finished in 21 minutes nor Herman was the runner in the gray shirt.
-        (clues.all_different(), ["21", "Herman", "Gray"]),
+        # 10. The one from Goldfield has a birthday 16 days before Patti.
+        (clues.add_n_equals(16), ["Goldfield", "Patti"]),
 
-        # 10. The competitor from Bellflower didn't wear the gray shirt.
-        (clues.all_different(), ["Bellflower", "Gray"]),
+        # 11. The 18-year-old has a birthday 4 days before the one from Quimby.
+        (clues.add_n_equals(4), ["18", "Quimby"]),
 
-        # 11. The contestant from Norway finished sometime after the runner in the red shirt.
-        (clues.greater_than(), ["Norway", "Red"]),
+        # 12. The 6-year-old has a birthday sometime before the 18-year-old.
+        (clues.greater_than(), ["18", "6"]),
 
-        # 12. Jay finished sometime before the competitor in the orange shirt.
-        (clues.greater_than(), ["Orange", "Jay"]),
+        # 13. The child from Cornville has a birthday sometime after Kerry.
+        (clues.greater_than(), ["Cornville", "Kerry"]),
 
-        # 13. The contestant from Fullerton finished sometime before the runner from Waldoboro.
-        (clues.greater_than(), ["Waldoboro", "Fullerton"]),
+        # 14. The one from Urbana has a birthday 8 days after Vicki.
+        (clues.add_n_equals(-8), ["Urbana", "Vicki"]),
 
-        # 14. Of the competitor from Norway and the competitor who finished in 21 minutes, one wore the red shirt and the other was Lynn.
-        (clues.connected_pairs(), ["Norway", "21", "Red", "Lynn"])
+        # 15. Hilda isn't 14 years old.
+        (clues.all_different(), ["Hilda", "14"]),
     ]
 
     for clue in clue_list:
@@ -85,7 +83,7 @@ def main():
         solution = problem.get_solutions()[0]
     profiler.print_stats(pstats.SortKey.TIME)
 
-    for i in [21, 22, 23, 24, 25, 26, 27]:
+    for i in DOMAINS[PRIMARY_DOMAIN]:
         for x in solution:
             if solution[x] == i:
                 print(str(i), x)
