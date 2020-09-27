@@ -11,7 +11,64 @@ DOMAINS = {
     "Town": ["Cornville", "El Monte", "Fillmore", "Goldfield", "Le Mars", "Quimby", "Urbana"],
     "Birthday": [3, 7, 11, 15, 19, 23, 27],
 }
-PRIMARY_DOMAIN = "Birthday"  # Primary domain should be the mathy domain if one exists
+PRIMARY_DOMAIN = "Birthday"  # Primary domain should be the mathy domain (if one exists)
+
+
+class LogicPuzzle:
+    def __init__(self, domains, primary_domain=None):
+        self.domains = domains
+        self.primary_domain = primary_domain
+        self._validate_domains()
+
+    def _validate_domains(self):
+        """Make sure that all domains are valid. This checks that:
+            1. All domains must be the same length
+            1. No naming overlaps occur. While it could technically be fine, overlaps confuse the user.
+            1. All domains must have strings, except up to one "mathy" domain with numbers
+            1. If primary_domain is given, it must be a valid domain. It must be the "mathy" domain, if it exists.
+        """
+        # Ensure all domains are the same length.
+        target_length = len(list(self.domains.values())[0])
+        for values in self.domains.values():
+            if len(values) != target_length:
+                raise ValueError(f"Given domains do not all have the same number of items.")
+
+        # Ensure no naming overlaps occur.
+        all_values = []
+        [all_values.extend([str(v) for v in _]) for _ in self.domains.values()]
+        if len(all_values) != len(set(all_values)):
+            raise ValueError(f"Given domains have repeated items.")
+
+        # Ensure everything is strings except up to one mathy domain, which must be integers.
+        mathy_domain = None
+        for domain_name, values in self.domains.items():
+            types = {type(v) for v in values}
+            if len(types) != 1:
+                raise ValueError(f"Domain `{domain_name}` does not have exactly one data type.")
+            if types not in [{int}, {str}]:
+                raise ValueError(f"Domain `{domain_name}` ")
+            if types == {int}:
+                # This is a mathy domain
+                if mathy_domain:
+                    raise ValueError(f"There is more than one domain with numbers specified.")
+                mathy_domain = domain_name
+
+        # Assign primary domain if it doesn't already exist
+        if not self.primary_domain:
+            if mathy_domain:
+                self.primary_domain = mathy_domain
+            else:
+                self.primary_domain = list(self.domains.keys())[0]
+
+        # primary_domain must be a valid domain, and mathy if possible.
+        if self.primary_domain not in list(self.domains.keys()):
+            raise ValueError(f"`{self.primary_domain}` is not one of the specified domains.")
+
+        if mathy_domain and self.primary_domain != mathy_domain:
+            raise ValueError("If a domain has numbers, it must be the primary domain.")
+
+
+puzzle = LogicPuzzle(DOMAINS)
 
 
 def main():
