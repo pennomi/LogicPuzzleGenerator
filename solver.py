@@ -1,4 +1,3 @@
-import json
 import copy
 
 __all__ = [
@@ -74,8 +73,8 @@ def _recursive_backtracking(solutions, domains, constraints, assignments):
             break
     else:
         # No unassigned variables. We've got a solution.
-        print("Found a solution")
-        print(json.dumps(assignments))
+        # print("Found a solution")
+        # print(json.dumps(assignments))
         solutions.append(assignments.copy())
         return solutions
 

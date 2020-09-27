@@ -1,3 +1,6 @@
+class Clue:
+    pass
+
 
 def greater_than():
     def inside(x, y):
