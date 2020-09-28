@@ -1,3 +1,5 @@
+import cProfile
+
 import clues as c
 from solver import Problem
 
@@ -68,12 +70,18 @@ class LogicPuzzle:
                 problem.add_variables(value_list, self.domains[self.primary_domain])
 
             # Also add the constraints
-            problem.add_constraint(c.all_different(), [str(v) for v in value_list])
+            all_diff = c.AllDifferent(*[str(v) for v in value_list])
+            problem.add_constraint(*all_diff.get_constraint())
 
         for clue in clues:
-            problem.add_constraint(*clue)
+            if isinstance(clue, c.Clue):
+                problem.add_constraint(*clue.get_constraint())
+            else:
+                problem.add_constraint(*clue)
 
-        self.solution = problem.get_solutions()[0]
+        solutions = problem.get_solutions()
+        print(f"{len(solutions)} solutions found")
+        self.solution = solutions[0]
 
     def print_solution(self):
         domains = list(self.domains.keys())
@@ -101,52 +109,54 @@ def main():
         "Birthday": [3, 7, 11, 15, 19, 23, 27],
     })
 
-    puzzle.solve([
-        # 1. Of the child from Goldfield and the child with the April 23rd birthday, one is Franklin and the other is 8 years old.
-        (c.connected_pairs(), ["Goldfield", "23", "Franklin", "8"]),
+    with cProfile.Profile() as profiler:
+        puzzle.solve([
+            # 1. Of the child from Goldfield and the child with the April 23rd birthday, one is Franklin and the other is 8 years old.
+            c.ConnectedPairs(["Goldfield", "23"], ["Franklin", "8"]),
 
-        # 2. The 18-year-old has a birthday 4 days before Franklin.
-        (c.add_n_equals(4), ["18", "Franklin"]),
+            # 2. The 18-year-old has a birthday 4 days before Franklin.
+            c.AddNEquals("18", 4, "Franklin"),
 
-        # 3. The child from Cornville has a birthday 8 days before Sadie.
-        (c.add_n_equals(8), ["Cornville", "Sadie"]),
+            # 3. The child from Cornville has a birthday 8 days before Sadie.
+            c.AddNEquals("Cornville", 8, "Sadie"),
 
-        # 4. The child from Le Mars has a birthday 20 days before the grandchild from Fillmore.
-        (c.add_n_equals(20), ["Le Mars", "Fillmore"]),
+            # 4. The child from Le Mars has a birthday 20 days before the grandchild from Fillmore.
+            c.AddNEquals("Le Mars", 20, "Fillmore"),
 
-        # 5. The 5-year-old has a birthday 20 days after the child from Le Mars.
-        (c.add_n_equals(-20), ["5", "Le Mars"]),
+            # 5. The 5-year-old has a birthday 20 days after the child from Le Mars.
+            c.AddNEquals("5", -20, "Le Mars"),
 
-        # 6. The 12-year-old is either Sadie or the grandchild with the April 7th birthday.
-        (c.is_one_of(), ["12", "Sadie", "7"]),
+            # 6. The 12-year-old is either Sadie or the grandchild with the April 7th birthday.
+            c.IsOneOf("12", ["Sadie", "7"]),
 
-        # 7. The 12-year-old has a birthday sometime after Kerry.
-        (c.greater_than(), ["12", "Kerry"]),
+            # 7. The 12-year-old has a birthday sometime after Kerry.
+            c.LessThan("Kerry", "12"),
 
-        # 8. The one from Quimby isn't 14 years old.
-        (c.all_different(), ["Quimby", "14"]),
+            # 8. The one from Quimby isn't 14 years old.
+            c.AllDifferent("Quimby", "14"),
 
-        # 9. The child from Goldfield has a birthday 8 days before Hilda.
-        (c.add_n_equals(8), ["Goldfield", "Hilda"]),
+            # 9. The child from Goldfield has a birthday 8 days before Hilda.
+            c.AddNEquals("Goldfield", 8, "Hilda"),
 
-        # 10. The one from Goldfield has a birthday 16 days before Patti.
-        (c.add_n_equals(16), ["Goldfield", "Patti"]),
+            # 10. The one from Goldfield has a birthday 16 days before Patti.
+            c.AddNEquals("Goldfield", 16, "Patti"),
 
-        # 11. The 18-year-old has a birthday 4 days before the one from Quimby.
-        (c.add_n_equals(4), ["18", "Quimby"]),
+            # 11. The 18-year-old has a birthday 4 days before the one from Quimby.
+            c.AddNEquals("18", 4, "Quimby"),
 
-        # 12. The 6-year-old has a birthday sometime before the 18-year-old.
-        (c.greater_than(), ["18", "6"]),
+            # 12. The 6-year-old has a birthday sometime before the 18-year-old.
+            c.LessThan("6", "18"),
 
-        # 13. The child from Cornville has a birthday sometime after Kerry.
-        (c.greater_than(), ["Cornville", "Kerry"]),
+            # 13. The child from Cornville has a birthday sometime after Kerry.
+            c.LessThan("Kerry", "Cornville"),
 
-        # 14. The one from Urbana has a birthday 8 days after Vicki.
-        (c.add_n_equals(-8), ["Urbana", "Vicki"]),
+            # 14. The one from Urbana has a birthday 8 days after Vicki.
+            c.AddNEquals("Urbana", -8, "Vicki"),
 
-        # 15. Hilda isn't 14 years old.
-        (c.all_different(), ["Hilda", "14"]),
-    ])
+            # 15. Hilda isn't 14 years old.
+            c.AllDifferent("Hilda", "14"),
+        ])
+    profiler.print_stats("time")
 
     puzzle.print_solution()
 

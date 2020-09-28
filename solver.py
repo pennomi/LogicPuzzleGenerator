@@ -4,10 +4,12 @@ __all__ = [
     "Problem",
 ]
 
+from clues import Clue
+
 
 class Problem:
     def __init__(self):
-        self._constraints = []
+        self._constraints: [Clue] = []
         self._variables = {}
 
     def add_variable(self, variable, domain):
@@ -34,7 +36,7 @@ class Problem:
         if not callable(constraint):
             msg = "Constraints must be instances of subclasses of the Constraint class"
             raise ValueError(msg)
-        self._constraints.append((Constraint(constraint), variables))
+        self._constraints.append(constraint)
 
     def get_solutions(self):
         domains, constraints = self._get_args()
@@ -46,18 +48,17 @@ class Problem:
         domains = self._variables.copy()
         all_variables = domains.keys()
         constraint_list = []
-        for constraint, variables in self._constraints:
-            if not variables:
-                variables = list(all_variables)
-            constraint_list.append((constraint, variables))
+        for clue in self._constraints:
+            constraint = clue
+            constraint_list.append(constraint)
         constraints = {}
         for variable in domains:
             constraints[variable] = []
-        for constraint, variables in constraint_list:
-            for variable in variables:
-                constraints[variable].append((constraint, variables))
-        for constraint, variables in constraint_list[:]:
-            constraint.preprocess(variables, domains, constraints)
+        for constraint in constraint_list:
+            for variable in constraint.variable_names:
+                constraints[variable].append(constraint)
+        for constraint in constraint_list[:]:
+            constraint.preprocess(constraint.variable_names, domains, constraints)
         for domain in domains.values():
             domain.reset_state()
         return domains, constraints
@@ -89,8 +90,8 @@ def _recursive_backtracking(solutions, domains, constraints, assignments):
         if push_domains:
             for domain in push_domains:
                 domain.push_state()
-        for constraint, variables in constraints[variable]:
-            if not constraint(variables, domains, assignments):
+        for constraint in constraints[variable]:
+            if not constraint(constraint.variable_names, domains, assignments):
                 # Value is not good.
                 break
         else:
@@ -101,9 +102,6 @@ def _recursive_backtracking(solutions, domains, constraints, assignments):
                 domain.pop_state()
     del assignments[variable]
     return solutions
-
-
-Unassigned = "Unassigned"
 
 
 class Domain(list):
@@ -129,49 +127,3 @@ class Domain(list):
     def hide_value(self, value):
         list.remove(self, value)
         self._hidden.append(value)
-
-
-class Constraint:
-    def __init__(self, func):
-        self._func = func
-
-    def __call__(
-        self,
-        variables,
-        domains,
-        assignments,
-    ):
-        parameters = [assignments.get(x, Unassigned) for x in variables]
-        if Unassigned in parameters:
-            return self.forward_check(variables, domains, assignments)
-        return self._func(*parameters)
-
-    def preprocess(self, variables, domains, constraints):
-        if len(variables) == 1:
-            variable = variables[0]
-            domain = domains[variable]
-            for value in domain[:]:
-                if not self(variables, domains, {variable: value}):
-                    domain.remove(value)
-            constraints[variable].remove((self, variables))
-
-    def forward_check(self, variables, domains, assignments):
-        unassigned_variable = Unassigned
-        for variable in variables:
-            if variable not in assignments:
-                if unassigned_variable is Unassigned:
-                    unassigned_variable = variable
-                else:
-                    break
-        else:
-            if unassigned_variable is not Unassigned:
-                domain = domains[unassigned_variable]
-                if domain:
-                    for value in domain[:]:
-                        assignments[unassigned_variable] = value
-                        if not self(variables, domains, assignments):
-                            domain.hide_value(value)
-                    del assignments[unassigned_variable]
-                if not domain:
-                    return False
-        return True
