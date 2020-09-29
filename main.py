@@ -54,7 +54,6 @@ class LogicPuzzle:
         # primary_domain must be a valid domain, and mathy if possible.
         if self.primary_domain not in list(self.domains.keys()):
             raise ValueError(f"`{self.primary_domain}` is not one of the specified domains.")
-
         if mathy_domain and self.primary_domain != mathy_domain:
             raise ValueError("If a domain has numbers, it must be the primary domain.")
 
@@ -67,17 +66,15 @@ class LogicPuzzle:
                 for var in value_list:
                     problem.add_variable(var, [var])
             else:
-                problem.add_variables(value_list, self.domains[self.primary_domain])
+                for var in value_list:
+                    problem.add_variable(var, self.domains[self.primary_domain])
 
-            # Also add the constraints
+            # Also add the fundamental clues
             all_diff = c.AllDifferent(*[str(v) for v in value_list])
-            problem.add_constraint(*all_diff.get_constraint())
+            problem.add_clue(all_diff)
 
         for clue in clues:
-            if isinstance(clue, c.Clue):
-                problem.add_constraint(*clue.get_constraint())
-            else:
-                problem.add_constraint(*clue)
+            problem.add_clue(clue)
 
         solutions = problem.get_solutions()
         print(f"{len(solutions)} solutions found")

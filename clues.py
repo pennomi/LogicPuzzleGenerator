@@ -1,9 +1,6 @@
 """Clue classes for the puzzle."""
 
 
-Unassigned = "Unassigned"
-
-
 def _unique(iterable):
     return len(set(iterable)) == len(iterable)
 
@@ -15,49 +12,32 @@ class Clue:
     def execute(self, *values):
         raise NotImplementedError()
 
-    def __call__(
-        self,
-        variables,
-        domains,
-        assignments,
-    ):
-        parameters = [assignments.get(x, Unassigned) for x in variables]
-        if Unassigned in parameters:
-            return self.forward_check(variables, domains, assignments)
+    def __call__(self, domains, assignments):
+        parameters = [assignments.get(x) for x in self.variable_names]
+        if None in parameters:
+            return self.forward_check(domains, assignments)
         return self.execute(*parameters)
 
-    def preprocess(self, variables, domains, constraints):
-        if len(variables) == 1:
-            variable = variables[0]
-            domain = domains[variable]
-            for value in domain[:]:
-                if not self(variables, domains, {variable: value}):
-                    domain.remove(value)
-            constraints[variable].remove((self, variables))
-
-    def forward_check(self, variables, domains, assignments):
-        unassigned_variable = Unassigned
-        for variable in variables:
+    def forward_check(self, domains, assignments):
+        unassigned_variable = None
+        for variable in self.variable_names:
             if variable not in assignments:
-                if unassigned_variable is Unassigned:
+                if unassigned_variable is None:
                     unassigned_variable = variable
                 else:
                     break
         else:
-            if unassigned_variable is not Unassigned:
+            if unassigned_variable is not None:
                 domain = domains[unassigned_variable]
                 if domain:
                     for value in domain[:]:
                         assignments[unassigned_variable] = value
-                        if not self(variables, domains, assignments):
+                        if not self(domains, assignments):
                             domain.hide_value(value)
                     del assignments[unassigned_variable]
                 if not domain:
                     return False
         return True
-
-    def get_constraint(self):
-        return self, self.variable_names
 
 
 class ConnectedPairs(Clue):
